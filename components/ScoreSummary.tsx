@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ScoreBreakdown } from '../types.ts';
+import { ScoreBreakdown } from '../types';
 
 interface ScoreSummaryProps {
   totalScore: number;

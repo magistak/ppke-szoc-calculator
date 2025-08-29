@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { FormData, SupporterDisability, LivingSituation, FamilyStatus } from '../types.ts';
-import AccordionItem from './AccordionItem.tsx';
-import Tooltip from './Tooltip.tsx';
-import { DISTANCE_OPTIONS, HEALTH_COSTS_OPTIONS } from '../constants.tsx';
-import { HELP_TEXTS } from '../constants/helpTexts.ts';
+import { FormData, SupporterDisability, LivingSituation, FamilyStatus } from '../types';
+import AccordionItem from './AccordionItem';
+import Tooltip from './Tooltip';
+import { DISTANCE_OPTIONS, HEALTH_COSTS_OPTIONS } from '../constants';
+import { HELP_TEXTS } from '../constants/helpTexts';
 
 interface CalculatorFormProps {
   formData: FormData;

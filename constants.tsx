@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FormData } from './types.ts';
+import { FormData } from './types';
 
 export const CHEVRON_DOWN = (
   <svg
@@ -66,7 +66,7 @@ export const INITIAL_FORM_DATA: FormData = {
     healthCosts: 0,
     selfSupporting: false,
     otherSocialCircumstances: 0,
-    perCapitaIncome: 0,
+  perCapitaIncome: '',
 };
 
 export const DISTANCE_OPTIONS = [

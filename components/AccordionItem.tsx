@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CHEVRON_DOWN, CHEVRON_UP } from '../constants.tsx';
+import { CHEVRON_DOWN, CHEVRON_UP } from '../constants';
 
 interface AccordionItemProps {
   title: string;

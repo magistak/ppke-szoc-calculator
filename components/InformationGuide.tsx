@@ -1,6 +1,6 @@
 
 import React from 'react';
-import AccordionItem from './AccordionItem.tsx';
+import AccordionItem from './AccordionItem';
 
 const InformationGuide: React.FC = () => {
     return (

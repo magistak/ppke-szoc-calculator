@@ -1,88 +1,150 @@
 
-import { FormData } from './types.ts';
-import { SUPPORTER_DISABILITY_POINTS, FAMILY_STATUS_POINTS, LIVING_SITUATION_POINTS } from './constants.tsx';
+import { FormData } from './types';
+import {
+    EQUALITY_POINTS,
+    APPLICANT_POINTS,
+    PER_CHILD_POINTS,
+    SINGLE_PARENT_POINTS,
+    PER_CARED_FAMILY_MEMBER_POINTS,
+    SUPPORTER_DISABILITY_POINTS,
+    SUPPORTER_STATUS_POINTS,
+    FAMILY_STATUS_POINTS,
+    LIVING_SITUATION_POINTS,
+    DISTANCE_POINTS,
+    HEALTH_COSTS_POINTS,
+    INCOME_BRACKETS,
+    HIGH_INCOME_BASE,
+    HIGH_INCOME_BASE_POINTS,
+    HIGH_INCOME_STEP,
+    HIGH_INCOME_STEP_POINTS,
+    SIBLING_POINTS,
+    EXCLUSIVITY_RULES,
+    SECTION_CAPS,
+    FIELD_LIMITS,
+} from './scoring-config';
 
 export const calculateSiblingPoints = (count: number): number => {
     if (count <= 0) return 0;
-    if (count === 1) return 4;
-    if (count === 2) return 8;
-    if (count === 3) return 12;
-    if (count === 4) return 15;
-    if (count === 5) return 17;
-    if (count === 6) return 19;
-    return 19 + (count - 6) * 2;
+    const base = SIBLING_POINTS.base;
+    if (count <= 6) return base[count];
+    return base[6] + (count - 6) * SIBLING_POINTS.extraStep;
 };
 
 export const calculateIncomePoints = (income: number): number => {
     if (income < 0) return 0;
-    if (income <= 59999) return 45;
-    if (income <= 64999) return 42;
-    if (income <= 69999) return 39;
-    if (income <= 74999) return 36;
-    if (income <= 79999) return 33;
-    if (income <= 84999) return 30;
-    if (income <= 89999) return 27;
-    if (income <= 94999) return 24;
-    if (income <= 99999) return 21;
-    if (income <= 104999) return 18;
-    if (income <= 109999) return 15;
-    if (income <= 114999) return 12;
-    if (income <= 119999) return 9;
-    if (income <= 124999) return 6;
-    if (income <= 129999) return 3;
-    if (income <= 159999) return 0;
-    if (income <= 164999) return -3;
-    
-    const stepsAbove = Math.floor((income - 165000) / 5000);
-    return -6 - (stepsAbove * 3);
+    for (const [upper, pts] of INCOME_BRACKETS) {
+        if (income <= upper) return pts;
+    }
+    if (income >= HIGH_INCOME_BASE) {
+        const stepsAbove = Math.floor((income - HIGH_INCOME_BASE) / HIGH_INCOME_STEP);
+        return HIGH_INCOME_BASE_POINTS - (stepsAbove * Math.abs(HIGH_INCOME_STEP_POINTS));
+    }
+    return 0;
 };
 
 export const calculateTotalScoreFromFormData = (formData: FormData): number => {
     const scores: number[] = [];
 
+    // Helpers
+    const cap = (value: number, maxCap?: number) => (typeof maxCap === 'number' ? Math.min(value, maxCap) : value);
+    const clamp = (value: number, max?: number) => {
+        const v = Math.max(0, Number.isFinite(value) ? value : 0);
+        return typeof max === 'number' ? Math.min(v, max) : v;
+    };
+
+    // Resolve exclusivity winners
+    const getKeyPoints = (key: string): number => {
+        if (key in EQUALITY_POINTS) return EQUALITY_POINTS[key as keyof typeof EQUALITY_POINTS];
+        if (key in APPLICANT_POINTS) return APPLICANT_POINTS[key as keyof typeof APPLICANT_POINTS];
+        return 0;
+    };
+    const exclusiveWinners = new Set<string>();
+    for (const group of EXCLUSIVITY_RULES) {
+        let bestKey: string | null = null;
+        let bestPts = -Infinity;
+        for (const key of group) {
+            if ((formData as any)[key]) {
+                const pts = getKeyPoints(key);
+                if (pts > bestPts) {
+                    bestPts = pts;
+                    bestKey = key;
+                }
+            }
+        }
+        if (bestKey) exclusiveWinners.add(bestKey);
+    }
+    const isAllowedByExclusivity = (key: string): boolean => {
+        if (EXCLUSIVITY_RULES.length === 0) return true;
+        // If the key is in any exclusivity group, only allow if it's the winner
+        const inAnyGroup = EXCLUSIVITY_RULES.some(g => g.includes(key));
+        if (!inAnyGroup) return true;
+        return exclusiveWinners.has(key);
+    };
+
     // Esélyegyenlőség
-    if (formData.disadvantaged) scores.push(10);
-    if (formData.multiplyDisadvantaged) scores.push(15);
-    if (formData.disabled) scores.push(10);
-    if (formData.largeFamily) scores.push(5);
-    if (formData.familySupporter) scores.push(5);
-    if (formData.orphanUnder25) scores.push(17);
-    if (formData.halfOrphanUnder25) scores.push(12);
-    if (formData.childCarer) scores.push(7);
+    const equalityScores: number[] = [];
+    (Object.keys(EQUALITY_POINTS) as Array<keyof typeof EQUALITY_POINTS>).forEach((k) => {
+        if ((formData as any)[k] && isAllowedByExclusivity(k as string)) equalityScores.push(EQUALITY_POINTS[k]);
+    });
 
     // Kérvényező adatai
-    if (formData.fosterCare) scores.push(6);
-    if (formData.guardianshipEnded) scores.push(12);
-    if (formData.orphanOver25) scores.push(17);
-    if (formData.halfOrphanOver25) scores.push(12);
-    if (formData.imaginedPaternity) scores.push(5);
+    const applicantScores: number[] = [];
+    (Object.keys(APPLICANT_POINTS) as Array<keyof typeof APPLICANT_POINTS>).forEach((k) => {
+        if ((formData as any)[k] && isAllowedByExclusivity(k as string)) applicantScores.push(APPLICANT_POINTS[k]);
+    });
     
+    // Field limits (optional clamps)
+    const dependentSiblings = clamp(Number(formData.dependentSiblings || 0), FIELD_LIMITS.dependentSiblingsMax);
+    const numberOfChildren = clamp(Number(formData.numberOfChildren || 0), FIELD_LIMITS.numberOfChildrenMax);
+    const caredForFamilyMembers = clamp(Number(formData.caredForFamilyMembers || 0), FIELD_LIMITS.caredForFamilyMembersMax);
+    const distanceVal = clamp(Number(formData.distance || 0), FIELD_LIMITS.distanceMax);
+    const healthCostsVal = clamp(Number(formData.healthCosts || 0), FIELD_LIMITS.healthCostsMax);
+
     // Családi körülmények
-    scores.push(calculateSiblingPoints(Number(formData.dependentSiblings)));
-    scores.push(Number(formData.numberOfChildren) * 7);
-    if (formData.singleParent) scores.push(5);
-    scores.push(Number(formData.caredForFamilyMembers) * 7);
+    const communityScores: number[] = [];
+    communityScores.push(calculateSiblingPoints(dependentSiblings));
+    communityScores.push(numberOfChildren * PER_CHILD_POINTS);
+    if (formData.singleParent) communityScores.push(SINGLE_PARENT_POINTS);
+    communityScores.push(caredForFamilyMembers * PER_CARED_FAMILY_MEMBER_POINTS);
     
     // Eltartók
-    scores.push(SUPPORTER_DISABILITY_POINTS[formData.supporter1Disability]);
-    if (formData.supporter1Pensioner) scores.push(4);
-    if (formData.supporter1Unemployed) scores.push(6);
-    
-    scores.push(SUPPORTER_DISABILITY_POINTS[formData.supporter2Disability]);
-    if (formData.supporter2Pensioner) scores.push(4);
-    if (formData.supporter2Unemployed) scores.push(6);
-    
-    scores.push(FAMILY_STATUS_POINTS[formData.familyStatus]);
+    const supportersScores: number[] = [];
+    supportersScores.push(SUPPORTER_DISABILITY_POINTS[formData.supporter1Disability]);
+    if (formData.supporter1Pensioner) supportersScores.push(SUPPORTER_STATUS_POINTS.pensioner);
+    if (formData.supporter1Unemployed) supportersScores.push(SUPPORTER_STATUS_POINTS.unemployed);
+
+    supportersScores.push(SUPPORTER_DISABILITY_POINTS[formData.supporter2Disability]);
+    if (formData.supporter2Pensioner) supportersScores.push(SUPPORTER_STATUS_POINTS.pensioner);
+    if (formData.supporter2Unemployed) supportersScores.push(SUPPORTER_STATUS_POINTS.unemployed);
+
+    supportersScores.push(FAMILY_STATUS_POINTS[formData.familyStatus]);
 
     // Lakhatás és egyéb
-    scores.push(LIVING_SITUATION_POINTS[formData.livingSituation]);
-    scores.push(formData.distance);
-    scores.push(formData.healthCosts);
-    if (formData.selfSupporting) scores.push(7);
-    scores.push(formData.otherSocialCircumstances);
+    const livingScores: number[] = [];
+    livingScores.push(LIVING_SITUATION_POINTS[formData.livingSituation]);
+    livingScores.push(DISTANCE_POINTS[distanceVal] ?? 0);
+    livingScores.push(HEALTH_COSTS_POINTS[healthCostsVal] ?? 0);
 
-    // Jövedelem
-    scores.push(calculateIncomePoints(Number(formData.perCapitaIncome)));
+    const otherScores: number[] = [];
+    if (formData.selfSupporting) otherScores.push(7);
+    const otherMax = FIELD_LIMITS.otherSocialCircumstancesMax;
+    otherScores.push(clamp(Number(formData.otherSocialCircumstances || 0), otherMax));
 
-    return scores.reduce((sum, current) => sum + current, 0);
+    // Jövedelem (csak ha meg van adva)
+    let incomeSum = 0;
+    if (formData.perCapitaIncome !== '') {
+        incomeSum = calculateIncomePoints(Number(formData.perCapitaIncome));
+    }
+
+    // Apply section caps
+    const equalitySum = cap(equalityScores.reduce((a, b) => a + b, 0), SECTION_CAPS.equality);
+    const applicantSum = cap(applicantScores.reduce((a, b) => a + b, 0), SECTION_CAPS.applicant);
+    const communitySum = cap(communityScores.reduce((a, b) => a + b, 0), SECTION_CAPS.community);
+    const supportersSum = cap(supportersScores.reduce((a, b) => a + b, 0), SECTION_CAPS.supporters);
+    const livingSum = cap(livingScores.reduce((a, b) => a + b, 0), SECTION_CAPS.living);
+    const otherSum = cap(otherScores.reduce((a, b) => a + b, 0), SECTION_CAPS.other);
+    incomeSum = cap(incomeSum, SECTION_CAPS.income);
+
+    const total = equalitySum + applicantSum + communitySum + supportersSum + livingSum + otherSum + incomeSum;
+    return cap(total, SECTION_CAPS.total);
 };

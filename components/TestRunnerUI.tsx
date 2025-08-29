@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { runner } from '../lib/test-runner.ts';
+import { runner } from '../lib/test-runner';
 
-// Define globals for TypeScript so it knows about our custom runner functions
+// Augment Window instead of redeclaring Jest globals to avoid type conflicts
 declare global {
-  var describe: typeof runner.describe;
-  var it: typeof runner.it;
-  var test: typeof runner.test;
-  var expect: typeof runner.expect;
+    interface Window {
+        describe: any;
+        it: any;
+        test: any;
+        expect: any;
+    }
 }
 
 interface TestResult {
@@ -23,15 +25,16 @@ const TestRunnerUI: React.FC = () => {
     useEffect(() => {
         const runTests = async () => {
             // Expose test functions globally for the test file to use
-            window.describe = runner.describe.bind(runner);
-            window.it = runner.it.bind(runner);
+            (window as any).describe = runner.describe.bind(runner);
+            (window as any).it = runner.it.bind(runner);
             // Assign runner.test directly. It is a pre-bound function with an .each property.
             // Using .bind() here would create a new function and strip the .each property.
-            window.test = runner.test;
-            window.expect = runner.expect.bind(runner);
+            (window as any).test = runner.test;
+            (window as any).expect = runner.expect.bind(runner);
 
             // Dynamically import the test file using a root-relative path ('/...')
             // to ensure the browser can find it regardless of the current page's path.
+            // @ts-ignore - Vite resolves this at runtime in the browser
             await import('/calculation.test.ts');
             
             setResults([...runner.results]); // Create a new array to trigger re-render

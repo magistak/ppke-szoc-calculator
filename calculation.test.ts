@@ -4,9 +4,9 @@
 // It is prepared to be run with a standard test runner like Jest.
 
 import { describe, test, expect } from '@jest/globals';
-import { FormData, LivingSituation } from './types.ts';
-import { INITIAL_FORM_DATA } from './constants.tsx';
-import { calculateTotalScoreFromFormData } from './calculation.ts';
+import { FormData, LivingSituation } from './types';
+import { INITIAL_FORM_DATA } from './constants';
+import { calculateTotalScoreFromFormData, calculateSiblingPoints, calculateIncomePoints } from './calculation';
 
 // Helper to create form data for tests by overriding defaults
 const getTestData = (overrides: Partial<FormData>): FormData => {
@@ -106,6 +106,11 @@ describe('Szociális Pontkalkulátor - Pontszámítási Tesztek', () => {
             expect(calculateTotalScoreFromFormData(formData)).toEqual(4 + 8);
         });
 
+        it('should calculate points for supporter 2 statuses', () => {
+            expect(calculateTotalScoreFromFormData(getTestData({ supporter2Unemployed: true }))).toEqual(6);
+            expect(calculateTotalScoreFromFormData(getTestData({ supporter2Pensioner: true }))).toEqual(4);
+        });
+
         it('should calculate points for family status', () => {
             expect(calculateTotalScoreFromFormData(getTestData({ familyStatus: 'divorcedNoRemarry' }))).toEqual(7);
             expect(calculateTotalScoreFromFormData(getTestData({ familyStatus: 'divorcedNoSupport' }))).toEqual(9);
@@ -120,7 +125,7 @@ describe('Szociális Pontkalkulátor - Pontszámítási Tesztek', () => {
             ['own', 5],
             ['courtesy', 5],
             ['none', 0],
-        ])('should award %i points for %s', (situation, points) => {
+        ])('should award %s for %i points', (situation, points) => {
             const formData = getTestData({ livingSituation: situation });
             expect(calculateTotalScoreFromFormData(formData)).toEqual(points);
         });
@@ -135,6 +140,10 @@ describe('Szociális Pontkalkulátor - Pontszámítási Tesztek', () => {
         ])('should award %i points for distance option %i', (value, points) => {
             const formData = getTestData({ distance: value });
             expect(calculateTotalScoreFromFormData(formData)).toEqual(points);
+        });
+        it('should clamp distance above max bracket to max points', () => {
+            const formData = getTestData({ distance: 12 });
+            expect(calculateTotalScoreFromFormData(formData)).toEqual(10);
         });
     });
     
@@ -151,6 +160,10 @@ describe('Szociális Pontkalkulátor - Pontszámítási Tesztek', () => {
             const formData = getTestData({ healthCosts: value });
             expect(calculateTotalScoreFromFormData(formData)).toEqual(points);
         });
+        it('should return 0 for unknown health cost code', () => {
+            const formData = getTestData({ healthCosts: 9 as any });
+            expect(calculateTotalScoreFromFormData(formData)).toEqual(0);
+        });
     });
 
     describe('Egyéb körülmények', () => {
@@ -160,10 +173,17 @@ describe('Szociális Pontkalkulátor - Pontszámítási Tesztek', () => {
         it('should award points for other social circumstances', () => {
             expect(calculateTotalScoreFromFormData(getTestData({ otherSocialCircumstances: 5 }))).toEqual(5);
             expect(calculateTotalScoreFromFormData(getTestData({ otherSocialCircumstances: 10 }))).toEqual(10);
+            // Cap at 10 and clamp negative to 0 as per PDF (0–10 pont)
+            expect(calculateTotalScoreFromFormData(getTestData({ otherSocialCircumstances: 11 }))).toEqual(10);
+            expect(calculateTotalScoreFromFormData(getTestData({ otherSocialCircumstances: -3 }))).toEqual(0);
         });
     });
 
     describe('Egy főre eső jövedelem', () => {
+        it('should treat negative income as 0 points', () => {
+            const formData = getTestData({ perCapitaIncome: -1 });
+            expect(calculateTotalScoreFromFormData(formData)).toEqual(0);
+        });
         test.each([
             [0, 45],
             [59999, 45],
@@ -182,6 +202,10 @@ describe('Szociális Pontkalkulátor - Pontszámítási Tesztek', () => {
         ])('should award %i points for income of %i Ft', (income, points) => {
             const formData = getTestData({ perCapitaIncome: income });
             expect(calculateTotalScoreFromFormData(formData)).toEqual(points);
+        });
+        it('should decrease by 3 for each 5000 Ft above 165000', () => {
+            expect(calculateIncomePoints(170000)).toEqual(-9);
+            expect(calculateIncomePoints(175001)).toEqual(-12);
         });
     });
     
@@ -219,5 +243,26 @@ describe('Szociális Pontkalkulátor - Pontszámítási Tesztek', () => {
         it('should return 0 for the initial empty form', () => {
             expect(calculateTotalScoreFromFormData(INITIAL_FORM_DATA)).toEqual(0);
         })
+    });
+
+    describe('Robustness and stacking across supporters', () => {
+        it('should sum statuses across both supporters including pensioner and unemployed', () => {
+            const formData = getTestData({
+                supporter1Disability: 'cat12',
+                supporter1Pensioner: true,
+                supporter1Unemployed: true,
+                supporter2Disability: 'cat3',
+                supporter2Pensioner: true,
+                supporter2Unemployed: true,
+                familyStatus: 'divorcedNoSupport',
+            });
+            // 10 + 4 + 6 + 8 + 4 + 6 + 9 = 47
+            expect(calculateTotalScoreFromFormData(formData)).toEqual(47);
+        });
+
+        it('should compute sibling points beyond 6 correctly', () => {
+            expect(calculateSiblingPoints(7)).toEqual(21);
+            expect(calculateSiblingPoints(8)).toEqual(23);
+        });
     });
 });

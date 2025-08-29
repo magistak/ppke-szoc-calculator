@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FormData, ScoreBreakdown } from './types.ts';
+import { FormData, ScoreBreakdown } from './types';
 // FIX: Statically import constants to resolve errors from using `await` in a non-async
 // function and to improve performance by removing unnecessary dynamic imports.
 import {
@@ -8,11 +8,11 @@ import {
     SUPPORTER_DISABILITY_POINTS,
     FAMILY_STATUS_POINTS,
     LIVING_SITUATION_POINTS
-} from './constants.tsx';
-import { calculateTotalScoreFromFormData, calculateSiblingPoints, calculateIncomePoints } from './calculation.ts';
-import CalculatorForm from './components/CalculatorForm.tsx';
-import ScoreSummary from './components/ScoreSummary.tsx';
-import InformationGuide from './components/InformationGuide.tsx';
+} from './constants';
+import { calculateTotalScoreFromFormData, calculateSiblingPoints, calculateIncomePoints } from './calculation';
+import CalculatorForm from './components/CalculatorForm';
+import ScoreSummary from './components/ScoreSummary';
+import InformationGuide from './components/InformationGuide';
 
 const App: React.FC = () => {
     const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
@@ -76,8 +76,10 @@ const App: React.FC = () => {
         addScore('selfSupporting', 'Önellátó hallgató', formData.selfSupporting ? 7 : 0);
         addScore('otherSocialCircumstances', 'Egyéb szociális körülmény', formData.otherSocialCircumstances);
 
-        // Jövedelem
-        addScore('perCapitaIncome', 'Egy főre eső jövedelem', calculateIncomePoints(Number(formData.perCapitaIncome)));
+        // Jövedelem csak akkor jelenjen meg, ha a felhasználó megadta
+        if (formData.perCapitaIncome !== '') {
+            addScore('perCapitaIncome', 'Egy főre eső jövedelem', calculateIncomePoints(Number(formData.perCapitaIncome)));
+        }
 
         const total = calculateTotalScoreFromFormData(formData);
         

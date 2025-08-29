@@ -1,5 +1,5 @@
 
-import { FormData } from '../types.ts';
+import { FormData } from '../types';
 
 export const HELP_TEXTS: { [key in keyof Partial<FormData> | string]: string } = {
   disadvantaged: 'Rendszeres gyermekvédelmi kedvezményre jogosultságról szóló jegyzői/gyámhatósági igazolás vagy határozat. Az adatot az adategyeztetés során rögzíteni kell a Neptunban.',
