@@ -1,5 +1,5 @@
 {
-  "name": "Copy of Pázmány Szociális Pontkalkulátor",
+  "name": "ppke-szocialis-pontkalkulator",
   "description": "Egy felhasználóbarát pontkalkulátor a Pázmány Péter Katolikus Egyetem hallgatói számára, hogy megbecsülhessék a Rendszeres Szociális Támogatásra és Kollégiumi jelentkezésre kapható pontszámukat a hivatalos 2025/26-os pontrendszer alapján.",
   "requestFramePermissions": []
 }

@@ -1,21 +1,14 @@
 {
-  "name": "copy-of-pázmány-szociális-pontkalkulátor",
+  "name": "ppke-szocialis-pontkalkulator",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
+  "description": "Egy felhasználóbarát pontkalkulátor a Pázmány Péter Katolikus Egyetem hallgatói számára.",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "@jest/globals": "^30.1.1"
+    "test": "jest"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2"
   }
 }
