@@ -1,9 +1,10 @@
 
 // @ts-nocheck
 // This file contains test cases for the point calculation logic.
-// It uses a custom browser-based test runner.
+// It is prepared to be run with a standard test runner like Jest.
 
-import { FormData, SupporterDisability, LivingSituation, FamilyStatus } from './types.ts';
+import { describe, test, expect } from '@jest/globals';
+import { FormData, LivingSituation } from './types.ts';
 import { INITIAL_FORM_DATA } from './constants.tsx';
 import { calculateTotalScoreFromFormData } from './calculation.ts';
 

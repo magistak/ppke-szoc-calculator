@@ -13,13 +13,11 @@ import { calculateTotalScoreFromFormData, calculateSiblingPoints, calculateIncom
 import CalculatorForm from './components/CalculatorForm.tsx';
 import ScoreSummary from './components/ScoreSummary.tsx';
 import InformationGuide from './components/InformationGuide.tsx';
-import TestRunnerUI from './components/TestRunnerUI.tsx';
 
 const App: React.FC = () => {
     const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
     const [totalScore, setTotalScore] = useState<number>(0);
     const [scoreBreakdown, setScoreBreakdown] = useState<ScoreBreakdown>({});
-    const [view, setView] = useState<'calculator' | 'tests'>('calculator');
 
     const calculateScores = useCallback(() => {
         const breakdown: ScoreBreakdown = {};
@@ -106,33 +104,23 @@ const App: React.FC = () => {
                            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">2025/26-os Egységes Pontrendszer alapján</p>
                         </div>
                     </div>
-                    <button 
-                        onClick={() => setView(v => v === 'calculator' ? 'tests' : 'calculator')}
-                        className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out"
-                    >
-                        {view === 'calculator' ? 'Tesztek futtatása' : 'Vissza a kalkulátorhoz'}
-                    </button>
                 </div>
             </header>
 
             <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {view === 'calculator' ? (
-                     <>
-                        <div className="mb-8">
-                            <InformationGuide />
+                 <>
+                    <div className="mb-8">
+                        <InformationGuide />
+                    </div>
+                    <div className="lg:grid lg:grid-cols-3 lg:gap-8">
+                        <div className="lg:col-span-2">
+                            <CalculatorForm formData={formData} setFormData={setFormData} />
                         </div>
-                        <div className="lg:grid lg:grid-cols-3 lg:gap-8">
-                            <div className="lg:col-span-2">
-                                <CalculatorForm formData={formData} setFormData={setFormData} />
-                            </div>
-                            <div className="mt-8 lg:mt-0 lg:col-span-1">
-                               <ScoreSummary totalScore={totalScore} breakdown={scoreBreakdown} onReset={handleReset} />
-                            </div>
+                        <div className="mt-8 lg:mt-0 lg:col-span-1">
+                           <ScoreSummary totalScore={totalScore} breakdown={scoreBreakdown} onReset={handleReset} />
                         </div>
-                    </>
-                ) : (
-                    <TestRunnerUI />
-                )}
+                    </div>
+                </>
             </main>
             <footer className="text-center py-4 mt-8 text-gray-500 dark:text-gray-400 text-sm">
                 <p>Ez egy nem hivatalos kalkulátor. A végleges pontszámot a Neptun rendszerben leadott kérvény alapján számolják.</p>
