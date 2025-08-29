@@ -25,12 +25,14 @@ const TestRunnerUI: React.FC = () => {
             // Expose test functions globally for the test file to use
             window.describe = runner.describe.bind(runner);
             window.it = runner.it.bind(runner);
-            window.test = runner.test.bind(runner); // Jest alias
+            // Assign runner.test directly. It is a pre-bound function with an .each property.
+            // Using .bind() here would create a new function and strip the .each property.
+            window.test = runner.test;
             window.expect = runner.expect.bind(runner);
 
-            // Dynamically import the test file using a relative path to ensure
-            // correct module resolution, which is more robust than a root-relative path.
-            await import('../calculation.test.ts');
+            // Dynamically import the test file using a root-relative path ('/...')
+            // to ensure the browser can find it regardless of the current page's path.
+            await import('/calculation.test.ts');
             
             setResults([...runner.results]); // Create a new array to trigger re-render
             setIsRunning(false);

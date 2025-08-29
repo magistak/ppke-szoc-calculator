@@ -11,6 +11,16 @@ interface TestResult {
 class TestRunner {
   results: TestResult[] = [];
   currentSuite: string = '';
+  // This property will hold the test function and its .each method
+  test: ((description: string, callback: () => void) => void) & { each: (cases: any[][]) => (description: string, callback: (...args: any[]) => void) => void; };
+
+  constructor() {
+    // In the constructor, we create the `test` function.
+    // It's the `it` method bound to the current instance.
+    // We then attach the `each` method to it.
+    this.test = this.it.bind(this) as any;
+    this.test.each = this.each.bind(this);
+  }
 
   describe(suiteName: string, callback: () => void) {
     this.currentSuite = suiteName;
@@ -36,9 +46,20 @@ class TestRunner {
     }
   }
 
-  // Alias `test` to `it` for Jest compatibility
-  test(description: string, callback: () => void) {
-      this.it(description, callback);
+  // Implementation of .each
+  each(cases: any[][]) {
+    return (description: string, callback: (...args: any[]) => void) => {
+        cases.forEach(caseArgs => {
+            const formatArgs = [...caseArgs];
+            const formattedDescription = description.replace(/%[sifd]/g, (match) => {
+                const arg = formatArgs.shift();
+                return arg !== undefined ? String(arg) : match;
+            });
+
+            // For each case, call `it` with the formatted description
+            this.it(formattedDescription, () => callback(...caseArgs));
+        });
+    };
   }
 
   expect(actual: any) {
