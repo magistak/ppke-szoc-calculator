@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { FormData } from './types';
+import { FormData } from './types.ts';
 
 export const CHEVRON_DOWN = (
   <svg

@@ -1,49 +1,25 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { FormData, ScoreBreakdown } from './types';
-import { INITIAL_FORM_DATA, SUPPORTER_DISABILITY_POINTS, FAMILY_STATUS_POINTS, LIVING_SITUATION_POINTS } from './constants';
-import CalculatorForm from './components/CalculatorForm';
-import ScoreSummary from './components/ScoreSummary';
-import InformationGuide from './components/InformationGuide';
+import { FormData, ScoreBreakdown } from './types.ts';
+// FIX: Statically import constants to resolve errors from using `await` in a non-async
+// function and to improve performance by removing unnecessary dynamic imports.
+import {
+    INITIAL_FORM_DATA,
+    SUPPORTER_DISABILITY_POINTS,
+    FAMILY_STATUS_POINTS,
+    LIVING_SITUATION_POINTS
+} from './constants.tsx';
+import { calculateTotalScoreFromFormData, calculateSiblingPoints, calculateIncomePoints } from './calculation.ts';
+import CalculatorForm from './components/CalculatorForm.tsx';
+import ScoreSummary from './components/ScoreSummary.tsx';
+import InformationGuide from './components/InformationGuide.tsx';
+import TestRunnerUI from './components/TestRunnerUI.tsx';
 
 const App: React.FC = () => {
     const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
     const [totalScore, setTotalScore] = useState<number>(0);
     const [scoreBreakdown, setScoreBreakdown] = useState<ScoreBreakdown>({});
-
-    const calculateSiblingPoints = (count: number): number => {
-        if (count <= 0) return 0;
-        if (count === 1) return 4;
-        if (count === 2) return 8;
-        if (count === 3) return 12;
-        if (count === 4) return 15;
-        if (count === 5) return 17;
-        if (count === 6) return 19;
-        return 19 + (count - 6) * 2;
-    };
-
-    const calculateIncomePoints = (income: number): number => {
-        if (income < 0) return 0;
-        if (income <= 59999) return 45;
-        if (income <= 64999) return 42;
-        if (income <= 69999) return 39;
-        if (income <= 74999) return 36;
-        if (income <= 79999) return 33;
-        if (income <= 84999) return 30;
-        if (income <= 89999) return 27;
-        if (income <= 94999) return 24;
-        if (income <= 99999) return 21;
-        if (income <= 104999) return 18;
-        if (income <= 109999) return 15;
-        if (income <= 114999) return 12;
-        if (income <= 119999) return 9;
-        if (income <= 124999) return 6;
-        if (income <= 129999) return 3;
-        if (income <= 159999) return 0;
-        if (income <= 164999) return -3;
-        
-        const stepsAbove = Math.floor((income - 165000) / 5000);
-        return -6 - (stepsAbove * 3);
-    };
+    const [view, setView] = useState<'calculator' | 'tests'>('calculator');
 
     const calculateScores = useCallback(() => {
         const breakdown: ScoreBreakdown = {};
@@ -53,6 +29,9 @@ const App: React.FC = () => {
                 breakdown[key] = { label, points };
             }
         };
+
+        // This breakdown logic is for UI display purposes.
+        // The final total is calculated by the single-source-of-truth function.
 
         // Esélyegyenlőség
         addScore('disadvantaged', 'Hátrányos helyzet', formData.disadvantaged ? 10 : 0);
@@ -78,18 +57,22 @@ const App: React.FC = () => {
         addScore('caredForFamilyMembers', 'Ápolásra szoruló családtagok', Number(formData.caredForFamilyMembers) * 7);
         
         // Eltartók
-        addScore('supporter1Disability', '1. Eltartó rokkantsága', SUPPORTER_DISABILITY_POINTS[formData.supporter1Disability]);
+        // FIX: Replaced `await import()` with a statically imported constant to fix usage of await in a non-async function.
+        addScore('supporter1Disability', '1. Eltartó rokkantsága', formData.supporter1Disability !== 'none' ? SUPPORTER_DISABILITY_POINTS[formData.supporter1Disability] : 0);
         addScore('supporter1Pensioner', '1. Eltartó nyugdíjas', formData.supporter1Pensioner ? 4 : 0);
         addScore('supporter1Unemployed', '1. Eltartó munkanélküli', formData.supporter1Unemployed ? 6 : 0);
         
-        addScore('supporter2Disability', '2. Eltartó rokkantsága', SUPPORTER_DISABILITY_POINTS[formData.supporter2Disability]);
+        // FIX: Replaced `await import()` with a statically imported constant to fix usage of await in a non-async function.
+        addScore('supporter2Disability', '2. Eltartó rokkantsága', formData.supporter2Disability !== 'none' ? SUPPORTER_DISABILITY_POINTS[formData.supporter2Disability] : 0);
         addScore('supporter2Pensioner', '2. Eltartó nyugdíjas', formData.supporter2Pensioner ? 4 : 0);
         addScore('supporter2Unemployed', '2. Eltartó munkanélküli', formData.supporter2Unemployed ? 6 : 0);
         
-        addScore('familyStatus', 'Családi állapot', FAMILY_STATUS_POINTS[formData.familyStatus]);
+        // FIX: Replaced `await import()` with a statically imported constant to fix usage of await in a non-async function.
+        addScore('familyStatus', 'Családi állapot', formData.familyStatus !== 'none' ? FAMILY_STATUS_POINTS[formData.familyStatus] : 0);
 
         // Lakhatás és egyéb
-        addScore('livingSituation', 'Lakhatási körülmények', LIVING_SITUATION_POINTS[formData.livingSituation]);
+        // FIX: Replaced `await import()` with a statically imported constant to fix usage of await in a non-async function.
+        addScore('livingSituation', 'Lakhatási körülmények', formData.livingSituation !== 'none' ? LIVING_SITUATION_POINTS[formData.livingSituation] : 0);
         addScore('distance', 'Lakóhely távolsága', formData.distance);
         addScore('healthCosts', 'Rendszeres egészségügyi teher', formData.healthCosts);
         addScore('selfSupporting', 'Önellátó hallgató', formData.selfSupporting ? 7 : 0);
@@ -98,7 +81,7 @@ const App: React.FC = () => {
         // Jövedelem
         addScore('perCapitaIncome', 'Egy főre eső jövedelem', calculateIncomePoints(Number(formData.perCapitaIncome)));
 
-        const total = Object.values(breakdown).reduce((sum, item) => sum + item.points, 0);
+        const total = calculateTotalScoreFromFormData(formData);
         
         setScoreBreakdown(breakdown);
         setTotalScore(total);
@@ -115,7 +98,7 @@ const App: React.FC = () => {
     return (
         <div className="bg-gray-50 min-h-screen font-sans text-gray-800 dark:bg-gray-900 dark:text-gray-200">
             <header className="bg-white dark:bg-gray-800 shadow-md">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                     <div className="flex items-center space-x-4">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/6/6e/Logo_univpazmany.svg" alt="Pázmány Logo" className="h-16" />
                         <div>
@@ -123,21 +106,33 @@ const App: React.FC = () => {
                            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">2025/26-os Egységes Pontrendszer alapján</p>
                         </div>
                     </div>
+                    <button 
+                        onClick={() => setView(v => v === 'calculator' ? 'tests' : 'calculator')}
+                        className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg transition duration-200 ease-in-out"
+                    >
+                        {view === 'calculator' ? 'Tesztek futtatása' : 'Vissza a kalkulátorhoz'}
+                    </button>
                 </div>
             </header>
 
             <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-8">
-                    <InformationGuide />
-                </div>
-                <div className="lg:grid lg:grid-cols-3 lg:gap-8">
-                    <div className="lg:col-span-2">
-                        <CalculatorForm formData={formData} setFormData={setFormData} />
-                    </div>
-                    <div className="mt-8 lg:mt-0 lg:col-span-1">
-                       <ScoreSummary totalScore={totalScore} breakdown={scoreBreakdown} onReset={handleReset} />
-                    </div>
-                </div>
+                {view === 'calculator' ? (
+                     <>
+                        <div className="mb-8">
+                            <InformationGuide />
+                        </div>
+                        <div className="lg:grid lg:grid-cols-3 lg:gap-8">
+                            <div className="lg:col-span-2">
+                                <CalculatorForm formData={formData} setFormData={setFormData} />
+                            </div>
+                            <div className="mt-8 lg:mt-0 lg:col-span-1">
+                               <ScoreSummary totalScore={totalScore} breakdown={scoreBreakdown} onReset={handleReset} />
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <TestRunnerUI />
+                )}
             </main>
             <footer className="text-center py-4 mt-8 text-gray-500 dark:text-gray-400 text-sm">
                 <p>Ez egy nem hivatalos kalkulátor. A végleges pontszámot a Neptun rendszerben leadott kérvény alapján számolják.</p>
